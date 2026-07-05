@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voodoo Token Bank</title>
+    <script src="ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #0a2a3a;
+            color: white;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        header, nav, section, div, p, h1, h2, button, span, img {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: rgba(0,0,0,0.4);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+            margin: 0;
+            padding: 0;
+        }
+
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        nav ul li a:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        nav ul li a.active {
+            background: #111212;
+        }
+
+        .wallet-button {
+            background-color: #1d4cd1;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .wallet-button.connected {
+            background-color: #1d4cd1;
+        }
+
+        .page-section {
+            display: none;
+            padding: 40px 20px;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 50px 30px;
+            flex-wrap: wrap;
+            gap: 40px;
+        }
+
+        .hero-text {
+            max-width: 55%;
+        }
+
+        .hero-text h1 {
+            font-size: 38px;
+        }
+
+        .lock-button {
+            background: #8fc0e3;
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        .hero-image {
+            max-width: 40%;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            padding: 30px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: white;
+            color: black;
+            padding: 20px 30px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .safes-section {
+            text-align: center;
+        }
+
+        .safes-section h2 {
+            text-align: center;
+            margin: 0 auto 40px;
+            font-size: 36px;
+            max-width: 1100px;
+            padding: 0 20px;
+        }
+
+        .safes-grid, .safe-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .safes-grid, .safe-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .safes-grid, .safe-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .safe-item {
+            position: relative;
+            background: #808080;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .safe-item:hover {
+            transform: scale(1.06);
+            box-shadow: 0 8px 24px rgba(0,170,255,0.4);
+        }
+
+        .safe-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            padding: 20px;
+            box-sizing: border-box;
+            max-height: 240px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+        }
+
+        .safe-item p {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #5e5d5d;
+            color: white;
+            padding: 9px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            min-width: 42px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            color: #111827;
+            padding: 32px;
+            border-radius: 16px;
+            z-index: 1001;
+            width: 90%;
+            max-width: 520px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border: 1px solid #e5e7eb;
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+
+        .timer {
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 20px;
+            margin: 12px 0;
+            text-align: center;
+        }
+
+        #error-log {
+            text-align: center;
+            padding: 10px;
+            margin: 10px;
+            color: #ef4444;
+            min-height: 24px;
+            font-weight: bold;
+            background: rgba(239,68,68,0.1);
+            border-radius: 6px;
+            display: none;
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #1f2937;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .form-input, .form-select {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            color: #111827;
+            min-width: 200px;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+
+        .token-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #1f2937;
+        }
+
+        .token-display img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .modal-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .modal-btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59,130,246,0.3);
+        }
+
+        .modal-btn.unlock {
+            background: #22c55e;
+        }
+
+        .modal-btn.unlock:hover {
+            background: #16a34a;
+        }
+
+        .modal-btn.unlock:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .info-row {
+            margin: 12px 0;
+            font-size: 15px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #1f2937;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            color: #374151;
+            flex: 1;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.4);
+        }
+
+        .rewards {
+            background: rgba(0, 170, 255, 0.06);
+            border: 1px solid rgba(0, 170, 255, 0.15);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            max-width: 460px;
+        }
+
+        .rewards-title {
+            font-size: 1.05em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #a0d8ff;
+        }
+
+        .rewards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 1.02em;
+        }
+
+        .reward-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 8px;
+        }
+
+        .reward-multiplier {
+            font-weight: 700;
+            color: #00ff9d;
+            font-size: 1.12em;
+        }
+
+        .rewards-note {
+            margin-top: 12px;
+            font-size: 0.86em;
+            line-height: 1.4;
+            opacity: 0.8;
+            color: #d0e8ff;
+        }
+
+        .rewards-error {
+            color: #ff6b6b;
+            font-size: 0.92em;
+            padding: 8px;
+            background: rgba(255,107,107,0.08);
+            border-radius: 6px;
+            text-align: center;
+        }
+
+
+        .safe-item.closed-safe img {
+            filter: brightness(0.72) saturate(0.85);
+        }
+
+        .safe-item.closed-safe::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.28);
+            border-radius: 12px;
+            pointer-events: none;
+        }        .most-valuable {
+            text-align: center;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+<header>
+    <div class="logo">Voodoo Bank</div>
+    <nav>
+        <ul id="mainMenu">
+            <li><a data-target="home" class="active">Home</a></li>
+            <li><a data-target="safes1-15">Safes 1-15</a></li>
+            <li><a data-target="safes16-30">Safes 16-30</a></li>
+            <li><a data-target="safes31-45">Safes 31-45</a></li>
+            <li><a data-target="safes46-60">Safes 46-60</a></li>
+        </ul>
+    </nav>
+    <button id="connectWallet" class="wallet-button">Connect Wallet</button>
+</header>
+<div id="error-log"></div>
+<!-- HOME -->
+<section id="home" class="page-section active">
+    <div class="hero">
+        <div class="hero-text">
+            <small>Earn rewards while locking up</small>
+            <h1>Store Your Voodoo Tokens in a Safe Deposit Box and Earn Interest Over Time</h1>
+            <p>The Voodoo Bank is exclusively made for long-term holders. Lock your Voodoo tokens in a safe deposit box and earn interest over time. The longer you lock, the higher the reward. Choose from 60 safe deposit boxes. Select a lock period of 1, 5, or 10 years and claim your rewards when the period ends!</p>
+            <div class="rewards" id="dynamicRewards">
+                <p class="rewards-title">Current Reward Multipliers (compound interest):</p>
+                <div class="rewards-list">
+                    <div class="reward-item"><span>1-year lock</span><span class="reward-multiplier">x--</span></div>
+                    <div class="reward-item"><span>5-year lock</span><span class="reward-multiplier">x--</span></div>
+                    <div class="reward-item"><span>10-year lock</span><span class="reward-multiplier">x--</span></div>
+                </div>
+                <p class="rewards-note"> Longer lock periods yield higher compound multipliers.<br> This is the total return factor applied to your initial deposit after the lock ends. </p>
+            </div>
+            <button class="lock-button" data-target="safes1-15">Lock Up Now</button>
+        </div>
+        <img class="hero-image" src="voodoo-token-bank-image.webp" alt="Voodoo Banker">
+    </div>
+    <div class="stats">
+        <div id="safesInUse" class="stat-box"><p>Safes in use</p><h2>0</h2></div>
+        <div id="tvlUSD" class="stat-box"><p>Total Value Locked</p><h2 id="tvlUSDValue">$0</h2></div>
+        <div id="tvlTokens" class="stat-box"><p>Total Tokens Locked</p><h2 id="tvlTokensValue">0 VDO</h2></div>
+        <div id="payout" class="stat-box"><p>Total Payout</p><h2 id="payoutValue">0 VDO</h2></div>
+    </div>
+    <section class="most-valuable">
+        <h2>Most Valuable Safes in Use</h2>
+        <div id="valuableGrid" class="safe-grid">
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 1"><p>1</p></div>
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 2"><p>2</p></div>
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 3"><p>3</p></div>
+        </div>
+    </section>
+</section>
+<!-- Safes sections -->
+<section id="safes1-15" class="page-section safes-section"><h2>Safes 1 to 15</h2><div id="grid1" class="safes-grid">
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 1"><p>1</p></div>
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 2"><p>2</p></div>
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 3"><p>3</p></div>
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 4"><p>4</p></div>
+            <div class="safe-item"><img src="voodoo-token-safe-open.webp" alt="Safe 5"><p>5</p></div>
+        </div></section>
+<section id="safes16-30" class="page-section safes-section"><h2>Safes 16 to 30</h2><div id="grid2" class="safes-grid"></div></section>
+<section id="safes31-45" class="page-section safes-section"><h2>Safes 31 to 45</h2><div id="grid3" class="safes-grid"></div></section>
+<section id="safes46-60" class="page-section safes-section"><h2>Safes 46 to 60</h2><div id="grid4" class="safes-grid"></div></section>
+<div id="overlay" onclick="closeModal()"></div>
+<div id="modal">
+    <div id="modal-content"></div>
+    <button onclick="closeModal()" style="position:absolute; top:16px; right:20px; background:none; border:none; color:#6b7280; font-size:32px; cursor:pointer; font-weight:bold;">x</button>
+</div>
+<footer>2026 - voodootoken.com. All rights reserved.</footer>
+<script>
+// ────────────────────────────────────────────────
+// CONFIGURATIE & CONSTANTS
+// ────────────────────────────────────────────────
+const closedUrl = "voodoo-token-safe-open.webp";
+const openUrl = "voodoo-token-safe-open.webp";
+const BANK_ADDRESS = "0x66C49BC2B59D4F61FA1836736bE17173d616C5D5";
+const PULSECHAIN_CHAIN_ID = "0x171";
+const PULSECHAIN_RPC = "https://rpc.pulsechain.com";
+const VOODOO_TOKEN = "0x1c5f8e8E84AcC71650F7a627cfA5B24B80f44f00";
+const LCW_API_KEY = "1590a5b9-6362-404e-afcc-1b94c5fdc5e8";
+
+function getRpcUrl() {
+    if (location.protocol === "http:" && (location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+        return location.origin + "/rpc";
+    }
+    return PULSECHAIN_RPC;
+}
+
+function getMetaMaskProvider() {
+    const eth = window.ethereum;
+    if (!eth) return null;
+    if (eth.providers?.length) {
+        const metaMask = eth.providers.find(p => p.isMetaMask);
+        if (metaMask) return metaMask;
+    }
+    return eth;
+}
+const BANK_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"safeNumber","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"duration","type":"uint256"},{"indexed":false,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"startTime","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"unlockTime","type":"uint256"}],"name":"LockCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"safeNumber","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"lockIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"reward","type":"uint256"},{"indexed":false,"internalType":"address","name":"token","type":"address"}],"name":"Unlocked","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newRate1Year","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newRate5Year","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newRate10Year","type":"uint256"}],"name":"YieldReduced","type":"event"},{"inputs":[],"name":"DAO","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_NORMALIZED_AMOUNT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_SAFES","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_NORMALIZED_AMOUNT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"PRECISION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"SECONDS_IN_YEAR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"STANDARD_DECIMALS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_safeNumber","type":"uint256"}],"name":"getLocksBySafeNumber","outputs":[{"components":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"unlockTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"multiplier","type":"uint256"},{"internalType":"address","name":"token","type":"address"},{"internalType":"bool","name":"isLocked","type":"bool"},{"internalType":"uint256","name":"safeNumber","type":"uint256"}],"internalType":"struct VoodooBankV4.Lock[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getNormalizedTotalLocked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getSafeData","outputs":[{"components":[{"internalType":"uint256","name":"safeNumber","type":"uint256"},{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"totalNormalizedLocked","type":"uint256"},{"internalType":"uint256","name":"numberOfLocks","type":"uint256"}],"internalType":"struct VoodooBankV4.SafeData[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_safeNumber","type":"uint256"}],"name":"isSafeAvailable","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_safeNumber","type":"uint256"},{"internalType":"uint256","name":"_amount","type":"uint256"},{"internalType":"uint256","name":"_duration","type":"uint256"},{"internalType":"address","name":"_token","type":"address"}],"name":"lock","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"locks","outputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"unlockTime","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"},{"internalType":"uint256","name":"multiplier","type":"uint256"},{"internalType":"address","name":"token","type":"address"},{"internalType":"bool","name":"isLocked","type":"bool"},{"internalType":"uint256","name":"safeNumber","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"rateFor10Year","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"rateFor1Year","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"rateFor5Year","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"reduceYieldBy50Percent","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"safeNumberToAddress","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"safesData","outputs":[{"internalType":"uint256","name":"safeNumber","type":"uint256"},{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"totalNormalizedLocked","type":"uint256"},{"internalType":"uint256","name":"numberOfLocks","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"tokenDecimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalNormalizedPaidOut","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalNormalizedValueLocked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSafesUsed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_token","type":"address"}],"name":"totalTokensInContract","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_lockIndex","type":"uint256"}],"name":"unlock","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"userSafeNumbers","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
+// DOM elementen
+const connectButton = document.getElementById('connectWallet');
+const errorLog = document.getElementById('error-log');
+const dynamicRewards = document.getElementById('dynamicRewards');
+let readProvider = new ethers.JsonRpcProvider(getRpcUrl());
+let readBank = new ethers.Contract(BANK_ADDRESS, BANK_ABI, readProvider);
+let provider, signer, userAddress, bankContract;
+
+function refreshReadContract() {
+    readProvider = new ethers.JsonRpcProvider(getRpcUrl());
+    readBank = new ethers.Contract(BANK_ADDRESS, BANK_ABI, readProvider);
+}
+// ────────────────────────────────────────────────
+// FUNCTIES (allemaal gedefinieerd VOOR de initialisatie)
+// ────────────────────────────────────────────────
+async function connectWallet() {
+    if (location.protocol === 'file:') {
+        errorLog.textContent = 'MetaMask cannot connect from a saved file. Close this tab and double-click START.bat, then use http://localhost:8080';
+        errorLog.style.display = 'block';
+        return;
+    }
+
+    const ethereum = getMetaMaskProvider();
+    if (!ethereum) {
+        errorLog.textContent = 'MetaMask not detected. Install the extension from metamask.io, enable it for this site, then refresh.';
+        errorLog.style.display = 'block';
+        return;
+    }
+
+    try {
+        errorLog.textContent = 'Connecting to MetaMask...';
+        errorLog.style.color = '#ef4444';
+        errorLog.style.display = 'block';
+
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+        if (!accounts.length) {
+            errorLog.textContent = 'No account selected in MetaMask';
+            return;
+        }
+
+        userAddress = accounts[0];
+        provider = new ethers.BrowserProvider(ethereum);
+        signer = await provider.getSigner();
+        const chainIdHex = await provider.send('eth_chainId', []);
+
+        if (chainIdHex !== PULSECHAIN_CHAIN_ID) {
+            try {
+                await ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: PULSECHAIN_CHAIN_ID }]
+                });
+            } catch (switchErr) {
+                if (switchErr.code === 4902) {
+                    await ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: PULSECHAIN_CHAIN_ID,
+                            chainName: 'PulseChain',
+                            nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 },
+                            rpcUrls: [PULSECHAIN_RPC],
+                            blockExplorerUrls: ['https://scan.pulsechain.com']
+                        }]
+                    });
+                } else {
+                    throw switchErr;
+                }
+            }
+        }
+
+        connectButton.textContent = `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+        connectButton.classList.add('connected');
+        bankContract = new ethers.Contract(BANK_ADDRESS, BANK_ABI, signer);
+        errorLog.textContent = 'Wallet connected';
+        errorLog.style.color = '#22c55e';
+        await updateAll();
+    } catch (err) {
+        console.error('Connect failed:', err);
+        errorLog.textContent = err.reason || err.message || 'Connection failed';
+        errorLog.style.color = '#ef4444';
+        errorLog.style.display = 'block';
+    }
+}
+async function updateDynamicRewards() {
+    if (!dynamicRewards) return;
+    try {
+        const rate1 = await readBank.rateFor1Year();
+        const rate5 = await readBank.rateFor5Year();
+        const rate10 = await readBank.rateFor10Year();
+        const mult1 = computeMultiplier(rate1, 1);
+        const mult5 = computeMultiplier(rate5, 5);
+        const mult10 = computeMultiplier(rate10, 10);
+        dynamicRewards.innerHTML = `
+            <p class="rewards-title">Current Reward Multipliers (compound interest):</p>
+            <div class="rewards-list">
+                <div class="reward-item"><span>1-year lock</span><span class="reward-multiplier">x${mult1}</span></div>
+                <div class="reward-item"><span>5-year lock</span><span class="reward-multiplier">x${mult5}</span></div>
+                <div class="reward-item"><span>10-year lock</span><span class="reward-multiplier">x${mult10}</span></div>
+            </div>
+            <p class="rewards-note"> Longer lock periods yield higher compound multipliers.<br> This is the total return factor applied to your initial deposit after the lock ends. </p>
+        `;
+    } catch (err) {
+        console.error("Failed to load reward multipliers:", err);
+        dynamicRewards.innerHTML = `<div class="rewards-error">Unable to load current multipliers right now...</div>`;
+    }
+}
+function computeMultiplier(rate, duration) {
+    const rateBn = typeof rate === 'bigint' ? rate : BigInt(rate);
+    const precision = 10n ** 18n;
+    let factorScaled = precision;
+    for (let i = 0; i < duration; i++) {
+        factorScaled = (factorScaled * (precision + rateBn)) / precision;
+    }
+    return (Number(factorScaled) / 1e18).toFixed(2);
+}
+async function getVdoPriceUsd() {
+    try {
+        const res = await fetch('https://api.livecoinwatch.com/coins/single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': LCW_API_KEY },
+            body: JSON.stringify({ currency: "USD", code: "VDO", meta: true })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return data?.rate && !isNaN(data.rate) ? Number(data.rate) : 0;
+    } catch (err) {
+        console.error("LiveCoinWatch error:", err);
+        return 0;
+    }
+}
+async function updateStats() {
+    try {
+        const tvlBN = await readBank.totalNormalizedValueLocked();
+        const paidOutBN = await readBank.totalNormalizedPaidOut();
+        const used = await readBank.totalSafesUsed();
+        let inUse = 0;
+        const data = await readBank.getSafeData();
+        data.forEach(s => { if (s.totalNormalizedLocked > 0n) inUse++; });
+        const tvlTokens = ethers.formatEther(tvlBN);
+        const tvlFormatted = Number(tvlTokens).toLocaleString('en-US', {maximumFractionDigits:0});
+        const price = await getVdoPriceUsd();
+        const tvlUsd = Number(tvlTokens) * price;
+        const tvlUsdStr = tvlUsd > 0 ? `$${tvlUsd.toLocaleString('en-US', {maximumFractionDigits:0})}` : '$0';
+        document.querySelector('#safesInUse h2').textContent = inUse;
+        document.querySelector('#tvlUSD h2').textContent = tvlUsdStr;
+        document.querySelector('#tvlTokens h2').textContent = `${tvlFormatted} VDO`;
+        document.querySelector('#payoutValue').textContent = `${Number(ethers.formatEther(paidOutBN)).toLocaleString('en-US', {maximumFractionDigits:0})} VDO`;
+    } catch (err) {
+        console.error("Stats failed:", err);
+    }
+}
+function createSafeElement(n, closed) {
+    const div = document.createElement('div');
+    div.className = closed ? 'safe-item closed-safe' : 'safe-item';
+    div.innerHTML = `<img src="${closed ? closedUrl : openUrl}" alt="Safe ${n}"><p>${n}</p>`;
+    div.onclick = () => openModal(n);
+    return div;
+}
+function renderAllSafesWithMap(map) {
+    const grids = [document.getElementById('grid1'), document.getElementById('grid2'), document.getElementById('grid3'), document.getElementById('grid4')];
+    grids.forEach(g => { if (g) g.innerHTML = ''; });
+    for (let n = 1; n <= 60; n++) {
+        const s = map.get(n) || { owner: ethers.ZeroAddress, totalNormalizedLocked: 0n };
+        const closed = s.owner !== ethers.ZeroAddress && s.totalNormalizedLocked > 0n;
+        const idx = Math.floor((n - 1) / 15);
+        if (grids[idx]) grids[idx].appendChild(createSafeElement(n, closed));
+    }
+}
+async function renderAllSafes() {
+    let map = new Map();
+    try {
+        const data = await readBank.getSafeData();
+        map = new Map(data.map(s => [Number(s.safeNumber), s]));
+    } catch (err) {
+        console.error("getSafeData failed:", err);
+    }
+    renderAllSafesWithMap(map);
+}
+function renderValuableSafesPlaceholder() {
+    const grid = document.getElementById('valuableGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (let n = 1; n <= 3; n++) {
+        grid.appendChild(createSafeElement(n, false));
+    }
+}
+async function showThreeValuableSafes() {
+    const grid = document.getElementById('valuableGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    let data = [];
+    try {
+        data = await readBank.getSafeData();
+    } catch (err) {
+        console.error("getSafeData failed:", err);
+        renderValuableSafesPlaceholder();
+        return;
+    }
+    const sorted = [...data].sort((a,b) => Number(b.totalNormalizedLocked - a.totalNormalizedLocked));
+    const top3 = sorted.filter(s => s.totalNormalizedLocked > 0n).slice(0,3);
+    top3.forEach(s => {
+        grid.appendChild(createSafeElement(Number(s.safeNumber), true));
+    });
+    for (let i = top3.length; i < 3; i++) {
+        grid.appendChild(createSafeElement(i + 1, false));
+    }
+}
+function showSection(target) {
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(target).classList.add('active');
+    document.querySelectorAll('#mainMenu a').forEach(a => a.classList.remove('active'));
+    document.querySelector(`a[data-target="${target}"]`)?.classList.add('active');
+}
+function isEmptyLock(lock) {
+    return lock.amount === 0n && lock.safeNumber === 0n && lock.startTime === 0n;
+}
+async function getUserLocksLength() {
+    if (!userAddress) return 0;
+    let length = 0;
+    while (length < 256) {
+        const lock = await readBank.locks(userAddress, length);
+        if (isEmptyLock(lock)) return length;
+        length++;
+    }
+    return length;
+}
+async function getUserLocks() {
+    const length = await getUserLocksLength();
+    const userLocks = [];
+    for (let i = 0; i < length; i++) {
+        userLocks.push(await readBank.locks(userAddress, i));
+    }
+    return userLocks;
+}
+async function openModal(safeNumber) {
+    const content = document.getElementById('modal-content');
+    let html = `<h2 style="margin:0 0 24px; font-size:28px; text-align:center; color:#1f2937;">Safe #${safeNumber}</h2>`;
+    let locks = [], owner = ethers.ZeroAddress;
+    try {
+        locks = await readBank.getLocksBySafeNumber(safeNumber);
+        owner = await readBank.safeNumberToAddress(safeNumber);
+    } catch (err) {
+        if (!err.reason?.includes("Safe number does not exist or is available")) {
+            html += `<p style="color:#ef4444;text-align:center;">Error loading safe: ${err.reason || err.message}</p>`;
+            content.innerHTML = html;
+            document.getElementById('modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            return;
+        }
+    }
+    const activeLocks = locks.filter(l => l.isLocked);
+    const isClosed = activeLocks.length > 0;
+    if (isClosed) {
+        const lock = activeLocks[activeLocks.length - 1];
+        let dec = 18;
+        try {
+            dec = await readBank.tokenDecimals(lock.token);
+        } catch {}
+        const amountStr = ethers.formatUnits(lock.amount, dec);
+        const amountFormatted = Number(amountStr).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const startDate = new Date(Number(lock.startTime) * 1000).toLocaleString();
+        const endDate = new Date(Number(lock.unlockTime) * 1000).toLocaleString();
+        const now = Date.now();
+        const unlockMs = Number(lock.unlockTime) * 1000;
+        const isUnlocked = now >= unlockMs;
+        const daysLeft = Math.max(0, Math.ceil((unlockMs - now) / 86400000));
+        html += `
+            <div style="margin:20px 0; padding:24px; background:#f9fafb; border-radius:16px; border:1px solid #e5e7eb; box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+                <div class="info-row"><span class="info-label">Status:</span><span style="color:#ef4444; font-weight:600;">Locked</span></div>
+                <div class="info-row"><span class="info-label">Locked since:</span><span class="info-value">${startDate}</span></div>
+                <div class="info-row"><span class="info-label">Lock ends:</span><span class="info-value">${endDate}</span></div>
+                <div class="info-row"><span class="info-label">Amount locked:</span><strong>${amountFormatted} VDO</strong></div>
+                <div class="info-row"><span class="info-label">Duration:</span><span class="info-value">${lock.duration} years</span></div>
+                ${isUnlocked ? `<div class="info-row"><span class="info-label">Status:</span><strong style="color:#22c55e;">Unlock ready!</strong></div>` : `<div class="timer">≈ ${daysLeft} days remaining</div>`}
+            </div>
+        `;
+        if (userAddress && userAddress.toLowerCase() === owner.toLowerCase()) {
+            const userLocks = await getUserLocks();
+            const lockIndex = userLocks.findIndex(l => l.safeNumber.toString() === safeNumber.toString() && l.isLocked);
+            if (lockIndex !== -1) {
+                html += `<button class="modal-btn unlock" ${isUnlocked ? '' : 'disabled'} onclick="${isUnlocked ? `unlockSafe(${safeNumber}, ${lockIndex})` : ''}">Withdraw & Claim Rewards</button>`;
+                if (!isUnlocked) {
+                    html += `<p style="text-align:center; color:#6b7280; font-size:13px; margin-top:12px;">You can only withdraw after the lock period ends</p>`;
+                }
+            } else {
+                html += `<p style="color:#ef4444; text-align:center;">Cannot find lock index</p>`;
+            }
+        } else {
+            html += `<p style="text-align:center; color:#6b7280; margin-top:16px;">This safe belongs to someone else.</p>`;
+        }
+    } else {
+        html += `
+            <div class="modal-form">
+                <div class="form-row"><span class="form-label">Token:</span><div class="token-display">VDO <img src="favicon.png" alt="Voodoo Token"></div></div>
+                <div class="form-row"><span class="form-label">Amount (min 10000):</span><input type="number" id="amount" min="10000" value="10000" class="form-input"></div>
+                <div class="form-row"><span class="form-label">Duration:</span><select id="duration" class="form-select"><option value="1">1 Year</option><option value="5">5 Years</option><option value="10">10 Years</option></select></div>
+                <button class="modal-btn" onclick="lockSafe(${safeNumber})">Lock Now</button>
+                <p style="text-align:center; color:#6b7280; font-size:13px; margin-top:16px;">Approval will be requested automatically if needed (MetaMask)</p>
+            </div>
+        `;
+    }
+    content.innerHTML = html;
+    document.getElementById('modal').style.display = 'block';
+    document.getElementById('overlay').style.display = 'block';
+}
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+}
+async function lockSafe(safeNumber) {
+    if (!signer) {
+        errorLog.textContent = 'Please connect your wallet first';
+        errorLog.style.display = 'block';
+        return;
+    }
+    const amountStr = document.getElementById('amount')?.value;
+    const years = Number(document.getElementById('duration')?.value || 1);
+    if (!amountStr || BigInt(amountStr) < 10000n) {
+        errorLog.textContent = 'Please enter a valid amount (min 10000)';
+        errorLog.style.display = 'block';
+        return;
+    }
+    const tokenContract = new ethers.Contract(VOODOO_TOKEN, ["function decimals() view returns (uint8)", "function approve(address,uint256) returns (bool)", "function allowance(address,address) view returns (uint256)"], signer);
+    const dec = await tokenContract.decimals();
+    const amount = BigInt(amountStr);
+    const rawAmount = amount * (10n ** BigInt(dec));
+    try {
+        errorLog.textContent = '';
+        errorLog.style.display = 'none';
+        const allowance = await tokenContract.allowance(userAddress, BANK_ADDRESS);
+        if (allowance < rawAmount) {
+            errorLog.textContent = 'Approval required...';
+            errorLog.style.display = 'block';
+            await (await tokenContract.approve(BANK_ADDRESS, ethers.MaxUint256)).wait();
+        }
+        errorLog.textContent = 'Sending lock transaction...';
+        errorLog.style.display = 'block';
+        await (await bankContract.lock(safeNumber, rawAmount, years, VOODOO_TOKEN, { gasLimit: 800000 })).wait();
+        errorLog.textContent = 'Lock successful!';
+        errorLog.style.color = '#22c55e';
+        errorLog.style.display = 'block';
+        closeModal();
+        await updateAll();
+    } catch (err) {
+        console.error(err);
+        errorLog.textContent = err.reason || err.message || 'Failed';
+        errorLog.style.color = '#ef4444';
+        errorLog.style.display = 'block';
+    }
+}
+async function unlockSafe(safeNumber, lockIndex) {
+    if (!signer) {
+        errorLog.textContent = 'Wallet not connected';
+        errorLog.style.display = 'block';
+        return;
+    }
+    try {
+        errorLog.textContent = '';
+        errorLog.style.display = 'none';
+        await (await bankContract.unlock(lockIndex, { gasLimit: 500000 })).wait();
+        errorLog.textContent = 'Unlocked successfully!';
+        errorLog.style.color = '#22c55e';
+        errorLog.style.display = 'block';
+        closeModal();
+        await updateAll();
+    } catch (err) {
+        errorLog.textContent = err.reason || err.message || 'Failed';
+        errorLog.style.color = '#ef4444';
+        errorLog.style.display = 'block';
+    }
+}
+async function updateAll() {
+    refreshReadContract();
+    await updateDynamicRewards();
+    try {
+        console.log("updateAll started...");
+        await renderAllSafes();
+        await showThreeValuableSafes();
+        await updateStats();
+        console.log("updateAll completed");
+    } catch (err) {
+        console.error("updateAll failed:", err);
+        errorLog.textContent = "Failed to load page (check console)";
+        errorLog.style.display = 'block';
+    }
+}
+// ────────────────────────────────────────────────
+// EVENT LISTENERS + INITIALISATIE
+// ────────────────────────────────────────────────
+connectButton.addEventListener('click', connectWallet);
+document.querySelectorAll('#mainMenu a, .lock-button').forEach(el => {
+    el.addEventListener('click', e => {
+        e.preventDefault();
+        const t = el.dataset.target;
+        if (t) showSection(t);
+    });
+});
+renderAllSafesWithMap(new Map());
+renderValuableSafesPlaceholder();
+
+if (location.protocol === 'file:') {
+    errorLog.innerHTML = '<strong>Wrong way to open this page.</strong> MetaMask and live multipliers only work via START.bat → <a href="http://localhost:8080" style="color:#8fc0e3">http://localhost:8080</a>';
+    errorLog.style.display = 'block';
+} else {
+    updateAll();
+    if (getMetaMaskProvider()?.selectedAddress) {
+        connectWallet();
+    }
+}
+</script>
+</body>
+</html>
