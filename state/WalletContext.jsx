@@ -118,6 +118,127 @@ async function ensurePulseChain(ethereum) {
   }
 }
 
+/**
+ * eth_requestAccounts that does NOT hang forever when the user just closes
+ * the extension window (no official "Reject").
+ *
+ * Detects dismiss: page blurs (popup open) → focus returns → still no accounts
+ * → treat as cancelled so the next button click can open again.
+ */
+function requestVoodooAccounts(ethereum, { isCurrent, timeoutMs = 90_000 } = {}) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let sawBlur = false;
+    const started = Date.now();
+    let focusedSince = null;
+
+    const finish = (ok, val) => {
+      if (settled) return;
+      // Superseded by a newer button click — ignore, free this waiter
+      if (typeof isCurrent === 'function' && !isCurrent()) {
+        settled = true;
+        cleanup();
+        return;
+      }
+      settled = true;
+      cleanup();
+      if (ok) resolve(val);
+      else reject(val);
+    };
+
+    const dismissedErr = () => {
+      const err = new Error('dismissed');
+      err.code = 4001;
+      return err;
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
+      clearTimeout(hardTimer);
+      clearInterval(pollTimer);
+    };
+
+    const onBlur = () => {
+      sawBlur = true;
+      focusedSince = null;
+    };
+
+    const tryDismissIfClosed = async () => {
+      if (settled) return;
+      if (typeof isCurrent === 'function' && !isCurrent()) {
+        settled = true;
+        cleanup();
+        return;
+      }
+      if (Date.now() - started < 700) return;
+      try {
+        const accs = await ethereum.request({ method: 'eth_accounts' });
+        if (Array.isArray(accs) && accs.length) {
+          finish(true, accs);
+          return;
+        }
+        // Focus back, no accounts → user closed extension without reject
+        if (sawBlur) finish(false, dismissedErr());
+      } catch {
+        if (sawBlur) finish(false, dismissedErr());
+      }
+    };
+
+    const onFocus = () => {
+      setTimeout(tryDismissIfClosed, 400);
+    };
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') onFocus();
+    };
+
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
+
+    // Poll: extension may not always fire blur; if page focused long enough after start with no accounts, dismiss
+    const pollTimer = setInterval(async () => {
+      if (settled) return;
+      if (typeof isCurrent === 'function' && !isCurrent()) {
+        settled = true;
+        cleanup();
+        return;
+      }
+      const pageFocused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;
+      if (pageFocused && document.visibilityState === 'visible') {
+        if (focusedSince == null) focusedSince = Date.now();
+        // After popup closed, page is focused again for ~0.9s with still no accounts
+        if (Date.now() - started > 1200 && Date.now() - focusedSince > 900) {
+          try {
+            const accs = await ethereum.request({ method: 'eth_accounts' });
+            if (accs?.length) finish(true, accs);
+            else if (sawBlur || Date.now() - started > 2500) finish(false, dismissedErr());
+          } catch {
+            if (sawBlur || Date.now() - started > 2500) finish(false, dismissedErr());
+          }
+        }
+      } else {
+        focusedSince = null;
+        sawBlur = true; // lost focus → treat as popup interaction
+      }
+    }, 350);
+
+    const hardTimer = setTimeout(() => {
+      const err = new Error('Voodoo Wallet did not respond. Click Voodoo Wallet again.');
+      err.code = 'VOODOO_TIMEOUT';
+      finish(false, err);
+    }, timeoutMs);
+
+    // Kick the extension open
+    ethereum
+      .request({ method: 'eth_requestAccounts' })
+      .then((accs) => finish(true, accs || []))
+      .catch((err) => finish(false, err));
+  });
+}
+
 async function waitForRainbowReady(maxMs = 15000) {
   if (typeof window === 'undefined') return null;
   if (window.VoodooRainbow?.ready && window.VoodooRainbow.openConnectModal) {
@@ -157,14 +278,18 @@ export function WalletProvider({ children, onConnected }) {
   const activeEth = useRef(null);
   const voodooClickGen = useRef(0);
 
-  const applyConnection = useCallback(async (ethereum, kind, setError) => {
+  const applyConnection = useCallback(async (ethereum, kind, setError, opts = {}) => {
     if (!ethereum) return false;
+    const { isCurrent } = opts;
 
     let accounts = [];
     try {
       if (kind === 'voodoo') {
-        // Always re-open extension on each connect attempt
-        accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+        // Detect "closed without cancel" so a later click can open again
+        accounts = await requestVoodooAccounts(ethereum, {
+          isCurrent,
+          timeoutMs: 90_000,
+        });
       } else {
         try {
           accounts = await ethereum.request({ method: 'eth_accounts' });
@@ -176,9 +301,13 @@ export function WalletProvider({ children, onConnected }) {
         }
       }
     } catch (err) {
-      // User closed / rejected — silent (no banner/popup spam)
-      if (err?.code === 4001 || /reject|denied|cancel/i.test(err?.message || '')) {
-        console.info('[Wallet] user cancelled connect');
+      // User closed / rejected / dismissed popup — silent
+      if (
+        err?.code === 4001
+        || err?.code === 'VOODOO_TIMEOUT'
+        || /reject|denied|cancel|dismiss/i.test(err?.message || '')
+      ) {
+        console.info('[Wallet] user cancelled or dismissed connect');
         return false;
       }
       throw err;
@@ -230,25 +359,49 @@ export function WalletProvider({ children, onConnected }) {
       return false;
     }
 
+    // Every click = new attempt. Supersedes a hung previous eth_requestAccounts waiter.
     const gen = ++voodooClickGen.current;
+    const isCurrent = () => gen === voodooClickGen.current;
     setConnecting(true);
     try {
-      let ethereum = findVoodooSync() || (await discoverVoodooEip6963(1500));
+      const ethereum = findVoodooSync() || (await discoverVoodooEip6963(1500));
       if (!ethereum) {
         setError?.(
           'Voodoo Wallet not detected. Install the extension, unlock it, refresh, then try again.',
         );
         return false;
       }
-      if (gen !== voodooClickGen.current) return false;
-      return await applyConnection(ethereum, 'voodoo', setError);
+      if (!isCurrent()) return false;
+
+      // If a previous request may still be pending, try to force a fresh permission UI
+      try {
+        await Promise.race([
+          ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }],
+          }),
+          new Promise((r) => setTimeout(r, 1500)),
+        ]);
+      } catch (permErr) {
+        // Unsupported or rejected — eth_requestAccounts still runs below
+        if (permErr?.code === 4001) {
+          console.info('[Wallet] permissions rejected');
+          return false;
+        }
+      }
+      if (!isCurrent()) return false;
+
+      return await applyConnection(ethereum, 'voodoo', setError, { isCurrent });
     } catch (err) {
-      if (gen !== voodooClickGen.current) return false;
+      if (!isCurrent()) return false;
+      if (err?.code === 4001 || /dismiss|reject|denied|cancel/i.test(err?.message || '')) {
+        return false;
+      }
       console.error('Voodoo connect failed:', err);
       setError?.(err?.message || 'Voodoo Wallet connection failed');
       return false;
     } finally {
-      if (gen === voodooClickGen.current) setConnecting(false);
+      if (isCurrent()) setConnecting(false);
     }
   }, [applyConnection]);
 
