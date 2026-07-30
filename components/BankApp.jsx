@@ -148,7 +148,17 @@ export default function BankApp() {
     if (connected) await updateAll();
   };
 
-  const handleNavigate = (sectionId) => setActiveSection(sectionId);
+  const handleNavigate = (sectionId) => {
+    setActiveSection(sectionId);
+    // Always start at the top of the new section (Lock Up Now / menu)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      // Next frame in case layout shifts after section switch
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      });
+    }
+  };
 
   const handleSafeClick = (safeNumber) => setModalSafe(safeNumber);
 
