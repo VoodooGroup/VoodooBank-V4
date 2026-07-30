@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  // Off: double-mount in StrictMode interferes with wallet extension prompts
+  reactStrictMode: false,
   async rewrites() {
     return [
       {

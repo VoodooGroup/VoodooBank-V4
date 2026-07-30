@@ -1,6 +1,16 @@
 import { SAFE_SECTIONS } from '../Contract_Files/constants';
 
-export default function Header({ activeSection, onNavigate, walletLabel, isConnected, onConnect }) {
+export default function Header({
+  activeSection,
+  onNavigate,
+  voodooLabel,
+  otherLabel,
+  isConnected,
+  walletKind,
+  onConnectVoodoo,
+  onConnectOther,
+  connecting,
+}) {
   return (
     <header>
       <div className="logo">Voodoo Bank</div>
@@ -23,13 +33,28 @@ export default function Header({ activeSection, onNavigate, walletLabel, isConne
           ))}
         </ul>
       </nav>
-      <button
-        id="connectWallet"
-        className={`wallet-button${isConnected ? ' connected' : ''}`}
-        onClick={onConnect}
-      >
-        {walletLabel}
-      </button>
+      <div className="wallet-actions">
+        <button
+          type="button"
+          id="voodooWalletBtn"
+          className={`wallet-btn wallet-btn-voodoo${isConnected && walletKind === 'voodoo' ? ' is-connected' : ''}`}
+          title="Connect with Voodoo Wallet browser extension"
+          disabled={connecting && walletKind !== 'voodoo'}
+          onClick={onConnectVoodoo}
+        >
+          {voodooLabel}
+        </button>
+        <button
+          type="button"
+          id="connectBtn"
+          className={`wallet-btn wallet-btn-other${isConnected && walletKind === 'rainbow' ? ' is-connected' : ''}`}
+          title="Other wallets via RainbowKit (MetaMask, WalletConnect, Rabby, …)"
+          disabled={connecting && walletKind !== 'rainbow'}
+          onClick={onConnectOther}
+        >
+          {otherLabel}
+        </button>
+      </div>
     </header>
   );
 }

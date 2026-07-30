@@ -22,7 +22,17 @@ import Modal from './Modal';
 const DEFAULT_MULTIPLIERS = { one: '--', five: '--', ten: '--' };
 
 export default function BankApp() {
-  const { userAddress, signer, connectWallet, walletLabel, isConnected } = useWallet();
+  const {
+    userAddress,
+    signer,
+    connectVoodoo,
+    connectOther,
+    voodooLabel,
+    otherLabel,
+    isConnected,
+    walletKind,
+    connecting,
+  } = useWallet();
   const [activeSection, setActiveSection] = useState('home');
   const [safeData, setSafeData] = useState([]);
   const [stats, setStats] = useState({
@@ -101,8 +111,24 @@ export default function BankApp() {
     }
   }, [isConnected, updateAll]);
 
-  const handleConnect = async () => {
-    const connected = await connectWallet(setError);
+  const handleConnectVoodoo = async () => {
+    // Already connected via Voodoo — no-op (label shows address)
+    if (isConnected && walletKind === 'voodoo') return;
+    const connected = await connectVoodoo(setError);
+    if (connected) await updateAll();
+  };
+
+  const handleConnectOther = async () => {
+    // If already on rainbow, open account modal when possible
+    if (isConnected && walletKind === 'rainbow') {
+      try {
+        await window.VoodooRainbow?.openConnectModal?.({ mode: 'account' });
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    const connected = await connectOther(setError);
     if (connected) await updateAll();
   };
 
@@ -117,9 +143,13 @@ export default function BankApp() {
       <Header
         activeSection={activeSection}
         onNavigate={handleNavigate}
-        walletLabel={walletLabel}
+        voodooLabel={voodooLabel}
+        otherLabel={otherLabel}
         isConnected={isConnected}
-        onConnect={handleConnect}
+        walletKind={walletKind}
+        connecting={connecting}
+        onConnectVoodoo={handleConnectVoodoo}
+        onConnectOther={handleConnectOther}
       />
 
       <ErrorLog message={errorMessage} variant={errorVariant} />

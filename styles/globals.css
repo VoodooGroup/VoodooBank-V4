@@ -68,17 +68,100 @@ nav ul li a.active {
   background: #111212;
 }
 
-.wallet-button {
-  background-color: #1d4cd1;
-  color: white;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 6px;
-  cursor: pointer;
+/* Dual wallet buttons — same pattern as StakingPlatform-V4 */
+.wallet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
-.wallet-button.connected {
-  background-color: #1d4cd1;
+.wallet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 10.5rem;
+  min-width: 10.5rem;
+  max-width: 10.5rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wallet-btn:disabled {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.wallet-btn-voodoo {
+  background: #073749;
+}
+.wallet-btn-voodoo:hover:not(:disabled) {
+  background: #0a4a61;
+}
+
+.wallet-btn-other {
+  background: #1e40af;
+}
+.wallet-btn-other:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.wallet-btn.is-connected {
+  opacity: 1;
+}
+
+/* RainbowKit mount + overlays */
+#rainbowkit-root {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
+[data-rk],
+body > [data-rk] {
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 900px) {
+  header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  nav {
+    order: 3;
+    width: 100%;
+  }
+  nav ul {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .wallet-actions {
+    margin-left: auto;
+  }
+  .wallet-btn {
+    width: 9.25rem;
+    min-width: 9.25rem;
+    max-width: 9.25rem;
+    font-size: 0.8rem;
+  }
 }
 
 .page-section {
