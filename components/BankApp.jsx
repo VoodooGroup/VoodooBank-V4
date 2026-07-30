@@ -129,6 +129,7 @@ export default function BankApp() {
   const handleConnectVoodoo = async () => {
     // Already connected via Voodoo — no-op (label shows address)
     if (isConnected && walletKind === 'voodoo') return;
+    // Always allow click even if a previous request is still pending
     const connected = await connectVoodoo(setError);
     if (connected) await updateAll();
   };

@@ -39,7 +39,7 @@ export default function Header({
           id="voodooWalletBtn"
           className={`wallet-btn wallet-btn-voodoo${isConnected && walletKind === 'voodoo' ? ' is-connected' : ''}`}
           title="Connect with Voodoo Wallet browser extension"
-          disabled={connecting && walletKind !== 'voodoo'}
+          // Never disable while connecting — click-away left connecting=true and blocked the button
           onClick={onConnectVoodoo}
         >
           {voodooLabel}
@@ -49,7 +49,6 @@ export default function Header({
           id="connectBtn"
           className={`wallet-btn wallet-btn-other${isConnected && walletKind === 'rainbow' ? ' is-connected' : ''}`}
           title="Other wallets via RainbowKit (MetaMask, WalletConnect, Rabby, …)"
-          disabled={connecting && walletKind !== 'rainbow'}
           onClick={onConnectOther}
         >
           {otherLabel}

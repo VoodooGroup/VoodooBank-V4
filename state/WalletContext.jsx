@@ -131,7 +131,7 @@ function requestVoodooAccounts(ethereum, { isCurrent, timeoutMs = 120_000 } = {}
 
     const finish = (ok, val) => {
       if (settled) return;
-      // Newer button click superseded this attempt — stop waiting, no new popup
+      // Newer button click superseded this attempt — stop waiting (no new popup here)
       if (typeof isCurrent === 'function' && !isCurrent()) {
         settled = true;
         clearTimeout(hardTimer);
@@ -144,12 +144,13 @@ function requestVoodooAccounts(ethereum, { isCurrent, timeoutMs = 120_000 } = {}
     };
 
     const hardTimer = setTimeout(() => {
+      // End our wait only — does not open the wallet again
       const err = new Error('Voodoo Wallet did not respond. Click Voodoo Wallet again.');
       err.code = 'VOODOO_TIMEOUT';
       finish(false, err);
     }, timeoutMs);
 
-    // Only place that opens the extension (must be from a user gesture / button click)
+    // Opens extension once — only called from connectVoodoo (button click)
     ethereum
       .request({ method: 'eth_requestAccounts' })
       .then((accs) => finish(true, accs || []))
@@ -277,10 +278,16 @@ export function WalletProvider({ children, onConnected }) {
       return false;
     }
 
-    // Every button click = new attempt (supersedes previous waiter; does not auto-reopen)
+    // Every button click = new attempt (supersedes previous hung waiter)
     const gen = ++voodooClickGen.current;
     const isCurrent = () => gen === voodooClickGen.current;
     setConnecting(true);
+    // Always free the UI after a few seconds even if extension request hangs
+    // (click-away without Reject leaves eth_requestAccounts pending)
+    const unlockUi = setTimeout(() => {
+      if (isCurrent()) setConnecting(false);
+    }, 2500);
+
     try {
       const ethereum = findVoodooSync() || (await discoverVoodooEip6963(1500));
       if (!ethereum) {
@@ -291,7 +298,7 @@ export function WalletProvider({ children, onConnected }) {
       }
       if (!isCurrent()) return false;
 
-      // Single eth_requestAccounts from this user gesture only (no permissions spam)
+      // One eth_requestAccounts per this click only
       return await applyConnection(ethereum, 'voodoo', setError, { isCurrent });
     } catch (err) {
       if (!isCurrent()) return false;
@@ -302,6 +309,7 @@ export function WalletProvider({ children, onConnected }) {
       setError?.(err?.message || 'Voodoo Wallet connection failed');
       return false;
     } finally {
+      clearTimeout(unlockUi);
       if (isCurrent()) setConnecting(false);
     }
   }, [applyConnection]);
