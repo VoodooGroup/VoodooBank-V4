@@ -176,8 +176,9 @@ export function WalletProvider({ children, onConnected }) {
         }
       }
     } catch (err) {
-      if (err?.code === 4001 || /reject|denied/i.test(err?.message || '')) {
-        setError?.('Connection cancelled in wallet.');
+      // User closed / rejected — silent (no banner/popup spam)
+      if (err?.code === 4001 || /reject|denied|cancel/i.test(err?.message || '')) {
+        console.info('[Wallet] user cancelled connect');
         return false;
       }
       throw err;

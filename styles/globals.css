@@ -564,3 +564,151 @@ footer {
   cursor: pointer;
   font-weight: bold;
 }
+/* -- Modern white dialogs (same as StakingPlatform-V4) -- */
+body.voodoo-ui-open {
+  overflow: hidden;
+}
+
+.voodoo-ui-modal {
+  position: fixed !important;
+  inset: 0;
+  z-index: 100000 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.voodoo-ui-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.voodoo-ui-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 1.35rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  text-align: center;
+  color: #0f172a;
+  animation: voodoo-ui-in 0.22s ease-out;
+}
+
+@keyframes voodoo-ui-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.voodoo-ui-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 0.85rem;
+  border-radius: 9999px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  user-select: none;
+}
+
+.voodoo-ui-icon[data-type="error"] {
+  background: #dc2626;
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.35);
+}
+.voodoo-ui-icon[data-type="success"] {
+  background: #16a34a;
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35);
+}
+.voodoo-ui-icon[data-type="warning"] {
+  background: #d97706;
+  box-shadow: 0 8px 20px rgba(217, 119, 6, 0.35);
+}
+.voodoo-ui-icon[data-type="info"] {
+  background: #0e7490;
+  box-shadow: 0 8px 20px rgba(14, 116, 144, 0.35);
+}
+
+.voodoo-ui-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.voodoo-ui-message {
+  margin: 0 0 1.35rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.voodoo-ui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.voodoo-ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6.5rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.55rem;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+.voodoo-ui-btn:active { transform: scale(0.98); }
+
+.voodoo-ui-btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+.voodoo-ui-btn-primary:hover { background: #1d4ed8; }
+
+.voodoo-ui-btn-ghost {
+  background: transparent;
+  color: #475569;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+.voodoo-ui-btn-ghost:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+@media (max-width: 480px) {
+  .voodoo-ui-actions {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+  .voodoo-ui-btn { width: 100%; }
+}

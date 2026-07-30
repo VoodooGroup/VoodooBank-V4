@@ -12,12 +12,12 @@ import { formatTokenAmount, formatUsd } from '../helpers/formatters';
 import { useWallet } from '../state/WalletContext';
 import Header from './Header';
 import Footer from './Footer';
-import ErrorLog from './ErrorLog';
 import Hero from './Hero';
 import Stats from './Stats';
 import ValuableSafes from './ValuableSafes';
 import SafesSection from './SafesSection';
 import Modal from './Modal';
+import UiModal, { normalizeNotify } from './UiModal';
 
 const DEFAULT_MULTIPLIERS = { one: '--', five: '--', ten: '--' };
 
@@ -44,13 +44,28 @@ export default function BankApp() {
   const [multipliers, setMultipliers] = useState(DEFAULT_MULTIPLIERS);
   const [rewardsError, setRewardsError] = useState(false);
   const [rewardsLoading, setRewardsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [errorVariant, setErrorVariant] = useState('error');
   const [modalSafe, setModalSafe] = useState(null);
+  /** White modern dialog (replaces ErrorLog banner + chrome alerts) */
+  const [uiDialog, setUiDialog] = useState(null);
 
+  const closeUiDialog = useCallback(() => setUiDialog(null), []);
+
+  /**
+   * Notify user with a white centered popup (staking-style).
+   * User-cancel messages are silent (no toast, no green banner).
+   */
   const setError = useCallback((message, variant = 'error') => {
-    setErrorMessage(message || '');
-    setErrorVariant(variant);
+    if (!message) {
+      setUiDialog(null);
+      return;
+    }
+    const normalized = normalizeNotify(message, variant);
+    if (!normalized) {
+      // Quiet cancel / empty
+      console.info('[VoodooBank]', message);
+      return;
+    }
+    setUiDialog(normalized);
   }, []);
 
   const safeMap = useMemo(() => {
@@ -152,7 +167,14 @@ export default function BankApp() {
         onConnectOther={handleConnectOther}
       />
 
-      <ErrorLog message={errorMessage} variant={errorVariant} />
+      <UiModal
+        open={Boolean(uiDialog)}
+        title={uiDialog?.title}
+        message={uiDialog?.message}
+        type={uiDialog?.type || 'info'}
+        okText={uiDialog?.okText || 'OK'}
+        onClose={closeUiDialog}
+      />
 
       <section id="home" className={`page-section${activeSection === 'home' ? ' active' : ''}`}>
         <Hero
