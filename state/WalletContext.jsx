@@ -119,111 +119,29 @@ async function ensurePulseChain(ethereum) {
 }
 
 /**
- * eth_requestAccounts that does NOT hang forever when the user just closes
- * the extension window (no official "Reject").
+ * One eth_requestAccounts per button click only — no focus/blur auto-retry
+ * (that re-opened the extension "randomly" after the user clicked away).
  *
- * Detects dismiss: page blurs (popup open) → focus returns → still no accounts
- * → treat as cancelled so the next button click can open again.
+ * isCurrent: if user clicks the button again, the old waiter is ignored.
+ * Soft timeout only ends OUR wait (does not spawn new popups).
  */
-function requestVoodooAccounts(ethereum, { isCurrent, timeoutMs = 90_000 } = {}) {
+function requestVoodooAccounts(ethereum, { isCurrent, timeoutMs = 120_000 } = {}) {
   return new Promise((resolve, reject) => {
     let settled = false;
-    let sawBlur = false;
-    const started = Date.now();
-    let focusedSince = null;
 
     const finish = (ok, val) => {
       if (settled) return;
-      // Superseded by a newer button click — ignore, free this waiter
+      // Newer button click superseded this attempt — stop waiting, no new popup
       if (typeof isCurrent === 'function' && !isCurrent()) {
         settled = true;
-        cleanup();
+        clearTimeout(hardTimer);
         return;
       }
       settled = true;
-      cleanup();
+      clearTimeout(hardTimer);
       if (ok) resolve(val);
       else reject(val);
     };
-
-    const dismissedErr = () => {
-      const err = new Error('dismissed');
-      err.code = 4001;
-      return err;
-    };
-
-    const cleanup = () => {
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVis);
-      clearTimeout(hardTimer);
-      clearInterval(pollTimer);
-    };
-
-    const onBlur = () => {
-      sawBlur = true;
-      focusedSince = null;
-    };
-
-    const tryDismissIfClosed = async () => {
-      if (settled) return;
-      if (typeof isCurrent === 'function' && !isCurrent()) {
-        settled = true;
-        cleanup();
-        return;
-      }
-      if (Date.now() - started < 700) return;
-      try {
-        const accs = await ethereum.request({ method: 'eth_accounts' });
-        if (Array.isArray(accs) && accs.length) {
-          finish(true, accs);
-          return;
-        }
-        // Focus back, no accounts → user closed extension without reject
-        if (sawBlur) finish(false, dismissedErr());
-      } catch {
-        if (sawBlur) finish(false, dismissedErr());
-      }
-    };
-
-    const onFocus = () => {
-      setTimeout(tryDismissIfClosed, 400);
-    };
-
-    const onVis = () => {
-      if (document.visibilityState === 'visible') onFocus();
-    };
-
-    window.addEventListener('blur', onBlur);
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVis);
-
-    // Poll: extension may not always fire blur; if page focused long enough after start with no accounts, dismiss
-    const pollTimer = setInterval(async () => {
-      if (settled) return;
-      if (typeof isCurrent === 'function' && !isCurrent()) {
-        settled = true;
-        cleanup();
-        return;
-      }
-      const pageFocused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;
-      if (pageFocused && document.visibilityState === 'visible') {
-        if (focusedSince == null) focusedSince = Date.now();
-        // After popup closed, page is focused again for ~0.9s with still no accounts
-        if (Date.now() - started > 1200 && Date.now() - focusedSince > 900) {
-          try {
-            const accs = await ethereum.request({ method: 'eth_accounts' });
-            if (accs?.length) finish(true, accs);
-            else if (sawBlur || Date.now() - started > 2500) finish(false, dismissedErr());
-          } catch {
-            if (sawBlur || Date.now() - started > 2500) finish(false, dismissedErr());
-          }
-        }
-      } else {
-        focusedSince = null;
-        sawBlur = true; // lost focus → treat as popup interaction
-      }
-    }, 350);
 
     const hardTimer = setTimeout(() => {
       const err = new Error('Voodoo Wallet did not respond. Click Voodoo Wallet again.');
@@ -231,7 +149,7 @@ function requestVoodooAccounts(ethereum, { isCurrent, timeoutMs = 90_000 } = {})
       finish(false, err);
     }, timeoutMs);
 
-    // Kick the extension open
+    // Only place that opens the extension (must be from a user gesture / button click)
     ethereum
       .request({ method: 'eth_requestAccounts' })
       .then((accs) => finish(true, accs || []))
@@ -351,7 +269,7 @@ export function WalletProvider({ children, onConnected }) {
     }
   }, []);
 
-  /** Standalone Voodoo Wallet button — opens the browser extension */
+  /** Standalone Voodoo Wallet button — opens the browser extension ONLY on this click */
   const connectVoodoo = useCallback(async (setError) => {
     if (typeof window === 'undefined') return false;
     if (window.location.protocol === 'file:') {
@@ -359,7 +277,7 @@ export function WalletProvider({ children, onConnected }) {
       return false;
     }
 
-    // Every click = new attempt. Supersedes a hung previous eth_requestAccounts waiter.
+    // Every button click = new attempt (supersedes previous waiter; does not auto-reopen)
     const gen = ++voodooClickGen.current;
     const isCurrent = () => gen === voodooClickGen.current;
     setConnecting(true);
@@ -373,24 +291,7 @@ export function WalletProvider({ children, onConnected }) {
       }
       if (!isCurrent()) return false;
 
-      // If a previous request may still be pending, try to force a fresh permission UI
-      try {
-        await Promise.race([
-          ethereum.request({
-            method: 'wallet_requestPermissions',
-            params: [{ eth_accounts: {} }],
-          }),
-          new Promise((r) => setTimeout(r, 1500)),
-        ]);
-      } catch (permErr) {
-        // Unsupported or rejected — eth_requestAccounts still runs below
-        if (permErr?.code === 4001) {
-          console.info('[Wallet] permissions rejected');
-          return false;
-        }
-      }
-      if (!isCurrent()) return false;
-
+      // Single eth_requestAccounts from this user gesture only (no permissions spam)
       return await applyConnection(ethereum, 'voodoo', setError, { isCurrent });
     } catch (err) {
       if (!isCurrent()) return false;
