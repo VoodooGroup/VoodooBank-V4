@@ -2,7 +2,7 @@ import Script from 'next/script';
 import '../styles/globals.css';
 import { WalletProvider } from '../state/WalletContext';
 
-const BRIDGE_V = '1';
+const BRIDGE_V = '2';
 
 export default function App({ Component, pageProps }) {
   return (

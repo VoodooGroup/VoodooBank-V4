@@ -196,10 +196,51 @@ export function WalletProvider({ children, onConnected }) {
   const [walletKind, setWalletKind] = useState(null); // 'voodoo' | 'rainbow'
   const activeEth = useRef(null);
   const voodooClickGen = useRef(0);
+  /** Always-current wallet kind for event handlers (avoids stale closures). */
+  const walletKindRef = useRef(null);
+  /**
+   * True only while the user explicitly clicked Other and we wait for RainbowKit.
+   * Prevents RK from stealing a Voodoo extension session (address on Other + flash disconnect).
+   */
+  const otherConnectPendingRef = useRef(false);
+  /** Intentional Voodoo session — ignore all RainbowKit connect/disconnect noise. */
+  const voodooSessionRef = useRef(false);
+
+  useEffect(() => {
+    walletKindRef.current = walletKind;
+  }, [walletKind]);
+
+  /** Stops rainbow-bridge zombie kill (~2.5s) from wiping a live Voodoo session */
+  const publishVoodooWalletApi = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.VoodooWallet || typeof window.VoodooWallet !== 'object') {
+      window.VoodooWallet = {};
+    }
+    window.VoodooWallet.getActiveProvider = () => {
+      if (activeEth.current) return activeEth.current;
+      if (voodooSessionRef.current) return findVoodooSync();
+      return null;
+    };
+    window.VoodooWallet.getActiveWalletKind = () => walletKindRef.current;
+  }, []);
+
+  useEffect(() => {
+    publishVoodooWalletApi();
+  }, [publishVoodooWalletApi]);
 
   const applyConnection = useCallback(async (ethereum, kind, setError, opts = {}) => {
     if (!ethereum) return false;
     const { isCurrent } = opts;
+
+    // Never let a stray RainbowKit event overwrite an active Voodoo session
+    if (
+      kind === 'rainbow'
+      && (voodooSessionRef.current || walletKindRef.current === 'voodoo')
+      && !otherConnectPendingRef.current
+    ) {
+      console.info('[Wallet] ignore rainbow apply — Voodoo session owns the wallet');
+      return false;
+    }
 
     let accounts = [];
     try {
@@ -237,38 +278,76 @@ export function WalletProvider({ children, onConnected }) {
       return false;
     }
 
+    if (typeof isCurrent === 'function' && !isCurrent()) return false;
+
+    // Re-check after async gap (RK may have raced while popup was open)
+    if (
+      kind === 'rainbow'
+      && (voodooSessionRef.current || walletKindRef.current === 'voodoo')
+      && !otherConnectPendingRef.current
+    ) {
+      console.info('[Wallet] ignore rainbow apply after accounts — Voodoo owns session');
+      return false;
+    }
+
     try {
       await ensurePulseChain(ethereum);
     } catch (e) {
       console.warn('PulseChain switch best-effort', e);
     }
 
+    if (typeof isCurrent === 'function' && !isCurrent()) return false;
+
     const browserProvider = new ethers.BrowserProvider(ethereum);
     const walletSigner = await browserProvider.getSigner();
     const address = accounts[0];
 
     activeEth.current = ethereum;
+    if (kind === 'voodoo') {
+      voodooSessionRef.current = true;
+      otherConnectPendingRef.current = false;
+    } else {
+      voodooSessionRef.current = false;
+      otherConnectPendingRef.current = false;
+    }
+    walletKindRef.current = kind;
     setUserAddress(address);
     setSigner(walletSigner);
     setBankContract(createWriteBank(walletSigner));
     setWalletKind(kind);
+    publishVoodooWalletApi();
     setError?.('', 'success');
     onConnected?.();
     return true;
-  }, [onConnected]);
+  }, [onConnected, publishVoodooWalletApi]);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback((opts = {}) => {
+    // RainbowKit disconnect events must never wipe a Voodoo extension session
+    if (opts.fromRainbow && (voodooSessionRef.current || walletKindRef.current === 'voodoo')) {
+      console.info('[Wallet] ignore rainbow disconnect — Voodoo session active');
+      return;
+    }
+
+    const wasRainbow = walletKindRef.current === 'rainbow';
     activeEth.current = null;
+    voodooSessionRef.current = false;
+    otherConnectPendingRef.current = false;
+    walletKindRef.current = null;
     setUserAddress(null);
     setSigner(null);
     setBankContract(null);
     setWalletKind(null);
-    try {
-      window.VoodooRainbow?.hardReset?.();
-    } catch {
-      /* ignore */
+    publishVoodooWalletApi();
+
+    // Only hard-reset RainbowKit when we were on the Other path
+    if (wasRainbow || opts.fromRainbow) {
+      try {
+        window.VoodooRainbow?.hardReset?.();
+      } catch {
+        /* ignore */
+      }
     }
-  }, []);
+  }, [publishVoodooWalletApi]);
 
   /** Standalone Voodoo Wallet button — opens the browser extension ONLY on this click */
   const connectVoodoo = useCallback(async (setError) => {
@@ -277,6 +356,9 @@ export function WalletProvider({ children, onConnected }) {
       setError?.('Open via http://localhost (not a saved file). Extensions need http/https.');
       return false;
     }
+
+    // Cancel any pending Other flow so RK events cannot claim this session
+    otherConnectPendingRef.current = false;
 
     // Every button click = new attempt (supersedes previous hung waiter)
     const gen = ++voodooClickGen.current;
@@ -325,10 +407,14 @@ export function WalletProvider({ children, onConnected }) {
       return false;
     }
 
+    // Leaving Voodoo path if user deliberately picks Other
+    voodooSessionRef.current = false;
+    otherConnectPendingRef.current = true;
     setConnecting(true);
     try {
       const rk = await waitForRainbowReady();
       if (!rk?.openConnectModal) {
+        otherConnectPendingRef.current = false;
         setError?.('RainbowKit not ready. Wait 2 seconds and click Other again.');
         return false;
       }
@@ -336,6 +422,7 @@ export function WalletProvider({ children, onConnected }) {
       // Open modal (force connect list)
       const opened = await rk.openConnectModal({ mode: 'connect', forceConnect: true });
       if (opened === false) {
+        otherConnectPendingRef.current = false;
         setError?.('Could not open wallet list. Refresh and try again.');
         return false;
       }
@@ -351,6 +438,7 @@ export function WalletProvider({ children, onConnected }) {
 
         async function onConnected(event) {
           if (settled) return;
+          if (!otherConnectPendingRef.current) return;
           const detail = event?.detail || {};
           const provider = detail.provider;
           if (!provider) return;
@@ -373,6 +461,7 @@ export function WalletProvider({ children, onConnected }) {
         function cleanup() {
           settled = true;
           clearTimeout(timeout);
+          otherConnectPendingRef.current = false;
           window.removeEventListener('voodoo:rainbow-connected', onConnected);
           window.removeEventListener('voodoo:rainbow-disconnected', onDisconnected);
         }
@@ -381,6 +470,7 @@ export function WalletProvider({ children, onConnected }) {
         window.addEventListener('voodoo:rainbow-disconnected', onDisconnected);
       });
     } catch (err) {
+      otherConnectPendingRef.current = false;
       console.error('Other/RainbowKit connect failed:', err);
       setError?.(err?.message || 'Could not open wallets');
       return false;
@@ -389,16 +479,32 @@ export function WalletProvider({ children, onConnected }) {
     }
   }, [applyConnection]);
 
-  // Listen for RainbowKit connects even if user re-connects later
+  // RainbowKit events — only apply when user chose Other (never steal Voodoo)
   useEffect(() => {
     function onConnected(event) {
       const provider = event?.detail?.provider;
       if (!provider) return;
+
+      // Opportunistic RK auto-connect after Voodoo eth_requestAccounts — ignore
+      if (voodooSessionRef.current || walletKindRef.current === 'voodoo') {
+        console.info('[Wallet] ignore voodoo:rainbow-connected during Voodoo session');
+        return;
+      }
+      if (!otherConnectPendingRef.current && walletKindRef.current !== 'rainbow') {
+        console.info('[Wallet] ignore unsolicited rainbow-connected');
+        return;
+      }
+
       applyConnection(provider, 'rainbow').catch((e) => console.warn(e));
     }
     function onDisconnected() {
-      // Only clear if we were on rainbow (avoid nuking Voodoo session)
-      if (walletKind === 'rainbow') disconnect();
+      if (voodooSessionRef.current || walletKindRef.current === 'voodoo') {
+        console.info('[Wallet] ignore voodoo:rainbow-disconnected during Voodoo session');
+        return;
+      }
+      if (walletKindRef.current === 'rainbow') {
+        disconnect({ fromRainbow: true });
+      }
     }
     window.addEventListener('voodoo:rainbow-connected', onConnected);
     window.addEventListener('voodoo:rainbow-disconnected', onDisconnected);
@@ -406,14 +512,26 @@ export function WalletProvider({ children, onConnected }) {
       window.removeEventListener('voodoo:rainbow-connected', onConnected);
       window.removeEventListener('voodoo:rainbow-disconnected', onDisconnected);
     };
-  }, [applyConnection, disconnect, walletKind]);
+  }, [applyConnection, disconnect]);
 
   // Account / chain listeners
   useEffect(() => {
     const eth = activeEth.current;
     if (!eth?.on) return undefined;
     const onAccounts = (accounts) => {
+      if (activeEth.current !== eth) return;
       if (!accounts?.length) {
+        // Extension revoked accounts — clear without Rainbow hardReset for Voodoo
+        if (walletKindRef.current === 'voodoo' || voodooSessionRef.current) {
+          activeEth.current = null;
+          voodooSessionRef.current = false;
+          walletKindRef.current = null;
+          setUserAddress(null);
+          setSigner(null);
+          setBankContract(null);
+          setWalletKind(null);
+          return;
+        }
         disconnect();
         return;
       }
