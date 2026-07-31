@@ -146,26 +146,35 @@ export default function Modal({
     }
 
     try {
+      // Clear any prior dialog — no "Sending lock transaction…" spam while wallet is open
       setError('');
       const dec = await getTokenDecimals(signer);
       const amount = BigInt(amountStr);
       const rawAmount = amount * 10n ** BigInt(dec);
 
-      setError('Approval required...');
-      const approved = await approveTokenIfNeeded(signer, userAddress, rawAmount);
-      if (approved) {
-        setError('Approval confirmed. Sending lock transaction...');
-      } else {
-        setError('Sending lock transaction...');
-      }
-
+      // Wallet popup(s) only: approve exact VDO amount if needed, then lock
+      await approveTokenIfNeeded(signer, userAddress, rawAmount);
       await lockSafeTx(signer, safeNumber, rawAmount, years);
-      setError('Lock successful!', 'success');
+
       onClose();
-      onSuccess();
+      // Refresh grid so this safe switches to closed image
+      await onSuccess?.();
+      setError(
+        `Locked ${amountStr} VDO in Safe #${safeNumber} for ${years} year${years === 1 ? '' : 's'}.`,
+        'success',
+      );
     } catch (err) {
       console.error(err);
-      setError(err.reason || err.message || 'Failed');
+      // User cancelled wallet — silent
+      if (
+        err?.code === 4001
+        || err?.code === 'ACTION_REJECTED'
+        || /user rejected|user denied|rejected the request|cancel/i.test(String(err?.message || ''))
+      ) {
+        setError('');
+        return;
+      }
+      setError(err.reason || err.shortMessage || err.message || 'Lock failed');
     }
   };
 
@@ -178,11 +187,19 @@ export default function Modal({
     try {
       setError('');
       await unlockSafeTx(signer, lockIndex);
-      setError('Unlocked successfully!', 'success');
       onClose();
-      onSuccess();
+      await onSuccess?.();
+      setError('Unlocked successfully!', 'success');
     } catch (err) {
-      setError(err.reason || err.message || 'Failed');
+      if (
+        err?.code === 4001
+        || err?.code === 'ACTION_REJECTED'
+        || /user rejected|user denied|rejected the request|cancel/i.test(String(err?.message || ''))
+      ) {
+        setError('');
+        return;
+      }
+      setError(err.reason || err.shortMessage || err.message || 'Unlock failed');
     }
   };
 
@@ -240,7 +257,7 @@ export default function Modal({
                 Lock Now
               </button>
               <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '13px', marginTop: '16px' }}>
-                Approval will be requested automatically if needed (MetaMask)
+                Your wallet will open to approve VDO (exact amount) if needed, then confirm the lock.
               </p>
             </div>
           )}

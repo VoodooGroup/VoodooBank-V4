@@ -8,9 +8,10 @@ export default function App({ Component, pageProps }) {
   return (
     <WalletProvider>
       {/* Same RainbowKit island as StakingPlatform-V4 (CSS via _document.js) */}
+      {/* lazyOnload: do not block first paint (bundle is ~5MB) */}
       <Script
         src={`/js/rainbow-bridge.js?v=${BRIDGE_V}`}
-        strategy="afterInteractive"
+        strategy="lazyOnload"
         onLoad={() => {
           if (typeof window !== 'undefined') {
             console.info('[VoodooBank] rainbow-bridge script loaded');

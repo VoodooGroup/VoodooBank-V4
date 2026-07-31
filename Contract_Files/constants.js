@@ -1,5 +1,6 @@
 export const OPEN_URL = '/voodoo-token-safe-open.webp';
-export const CLOSED_URL = '/voodoo-token-safe-open.webp';
+/** Real closed-safe asset (was wrongly the same as open → grid never looked locked). */
+export const CLOSED_URL = '/voodoo-token-safe-closed.png';
 export const HERO_IMAGE_URL = '/voodoo-token-bank-image.webp';
 export const VDO_LOGO_URL = '/favicon.png';
 

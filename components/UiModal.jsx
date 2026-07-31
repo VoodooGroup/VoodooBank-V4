@@ -96,10 +96,20 @@ export function normalizeNotify(message, variant = 'error') {
     return null;
   }
 
+  // Intermediate lock progress (wallet already open) — never show as Notice
+  if (
+    /sending lock transaction|approval required|approval confirmed|sending unlock/i.test(raw)
+  ) {
+    return null;
+  }
+
   let type = variant === 'success' ? 'success' : variant === 'info' ? 'info' : 'error';
   let title = type === 'success' ? 'Success' : type === 'info' ? 'Info' : 'Notice';
 
-  if (/not detected|not ready|install/i.test(raw)) {
+  if (type === 'success' || /lock successful|locked \d|unlocked successfully/i.test(raw)) {
+    title = 'Success';
+    type = 'success';
+  } else if (/not detected|not ready|install/i.test(raw)) {
     title = 'Wallet';
     type = 'warning';
   } else if (/failed|error|could not/i.test(raw) && type !== 'success') {

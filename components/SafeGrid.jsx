@@ -5,7 +5,9 @@ export default function SafeGrid({ start, end, safeMap, onSafeClick, className =
 
   for (let n = start; n <= end; n++) {
     const safe = safeMap.get(n);
-    const closed = Boolean(safe?.owner && safe.totalNormalizedLocked > 0n);
+    // Locked amount is the source of truth (owner alone is not enough)
+    const locked = safe?.totalNormalizedLocked;
+    const closed = locked != null && locked > 0n;
     items.push(
       <SafeItem key={n} safeNumber={n} closed={closed} onClick={onSafeClick} />,
     );

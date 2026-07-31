@@ -273,23 +273,15 @@ body > [data-rk] {
 }
 
 .safe-item:hover {
-  transform: scale(1.06);
-  box-shadow: 0 8px 24px rgba(0, 170, 255, 0.4);
+  /* no glow — keep a subtle lift only */
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Closed uses the real closed-door asset — no LOCKED text badge */
 .safe-item.is-closed img,
 .safe-item.closed-safe img {
-  filter: brightness(0.72) saturate(0.85);
-}
-
-.safe-item.is-closed::after,
-.safe-item.closed-safe::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 12px;
-  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
 
 .safe-item img {
@@ -487,11 +479,28 @@ body > [data-rk] {
   flex: 1;
 }
 
-footer {
+/* Bank footer — original colour + centred text (no social icons) */
+footer,
+.bank-site-footer {
   text-align: center;
   padding: 20px;
   font-size: 14px;
   background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+
+.bank-site-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.bank-site-footer-copy {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  color: inherit;
 }
 
 .rewards {

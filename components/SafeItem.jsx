@@ -5,8 +5,13 @@ export default function SafeItem({ safeNumber, closed, onClick }) {
     <div
       className={`safe-item${closed ? ' is-closed' : ''}`}
       onClick={() => onClick(safeNumber)}
+      data-safe-state={closed ? 'closed' : 'open'}
+      title={closed ? `Safe ${safeNumber} — locked` : `Safe ${safeNumber} — open`}
     >
-      <img src={closed ? CLOSED_URL : OPEN_URL} alt={`Safe ${safeNumber}`} />
+      <img
+        src={closed ? CLOSED_URL : OPEN_URL}
+        alt={closed ? `Safe ${safeNumber} locked` : `Safe ${safeNumber} open`}
+      />
       <p>{safeNumber}</p>
     </div>
   );

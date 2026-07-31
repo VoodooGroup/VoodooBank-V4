@@ -97,17 +97,27 @@ export default function BankApp() {
       const [data, statsResult] = await Promise.all([fetchSafeData(), fetchStats()]);
       setSafeData(data);
 
-      const tvlTokens = ethers.formatEther(statsResult.tvlBN);
-      const tvlFormatted = formatTokenAmount(tvlTokens);
+      // On-chain normalized amounts (18 decimals) — tokens locked + total paid out
+      const tvlTokensNum = Number(ethers.formatEther(statsResult.tvlBN));
+      const paidOutNum = Number(ethers.formatEther(statsResult.paidOutBN));
+      const tvlFormatted = formatTokenAmount(tvlTokensNum);
+      const payoutFormatted = formatTokenAmount(paidOutNum);
+
+      // Live VDO price (DexScreener) → USD TVL
       const price = await getVdoPriceUsd();
-      const tvlUsd = Number(tvlTokens) * price;
+      const tvlUsd = tvlTokensNum > 0 && price > 0 ? tvlTokensNum * price : 0;
 
       setStats({
         safesInUse: statsResult.inUse,
         tvlUsd: formatUsd(tvlUsd),
         tvlTokens: `${tvlFormatted} VDO`,
-        payout: `${formatTokenAmount(ethers.formatEther(statsResult.paidOutBN))} VDO`,
+        // 0 VDO is valid when nobody has unlocked yet
+        payout: `${payoutFormatted} VDO`,
       });
+
+      if (tvlTokensNum > 0 && !(price > 0)) {
+        console.warn('[Bank] TVL tokens OK but price=0 — check DexScreener / LCW');
+      }
     } catch (err) {
       console.error('updateAll failed:', err);
       setError('Failed to load page (check console)');

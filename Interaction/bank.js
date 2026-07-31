@@ -105,12 +105,16 @@ export async function fetchUserLocks(userAddress) {
   return userLocks;
 }
 
+/**
+ * Approve exact lock amount (not MaxUint256) so the wallet can show
+ * "Allow X VDO" instead of unlimited / blank amount.
+ */
 export async function approveTokenIfNeeded(signer, userAddress, rawAmount) {
   const tokenContract = new ethers.Contract(VOODOO_TOKEN, ERC20_ABI, signer);
   const allowance = await tokenContract.allowance(userAddress, BANK_ADDRESS);
 
   if (allowance < rawAmount) {
-    const tx = await tokenContract.approve(BANK_ADDRESS, ethers.MaxUint256);
+    const tx = await tokenContract.approve(BANK_ADDRESS, rawAmount);
     await tx.wait();
     return true;
   }
@@ -118,17 +122,21 @@ export async function approveTokenIfNeeded(signer, userAddress, rawAmount) {
   return false;
 }
 
+/**
+ * Bank.lock — VDO moves via transferFrom inside the contract (native value = 0 PLS).
+ * Exact rawAmount is in calldata so wallet simulation can surface the token spend.
+ * No intermediate dapp "sending..." UI; wallet opens on this call.
+ */
 export async function lockSafe(signer, safeNumber, rawAmount, years) {
   const bankContract = createWriteBank(signer);
-  const tx = await bankContract.lock(safeNumber, rawAmount, years, VOODOO_TOKEN, {
-    gasLimit: 800000,
-  });
+  // Let the wallet estimate gas (better simulation of ERC20 transferFrom + amount).
+  const tx = await bankContract.lock(safeNumber, rawAmount, years, VOODOO_TOKEN);
   return tx.wait();
 }
 
 export async function unlockSafe(signer, lockIndex) {
   const bankContract = createWriteBank(signer);
-  const tx = await bankContract.unlock(lockIndex, { gasLimit: 500000 });
+  const tx = await bankContract.unlock(lockIndex);
   return tx.wait();
 }
 
