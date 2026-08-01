@@ -164,21 +164,16 @@ export default function BankApp() {
     if (connected) await updateAll();
   };
 
-  const scrollPageToTop = () => {
-    if (typeof document === 'undefined') return;
-    const scroller = document.getElementById('page-scroll');
-    if (scroller) {
-      scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    } else {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    }
-  };
-
   const handleNavigate = (sectionId) => {
     setActiveSection(sectionId);
     // Always start at the top of the new section (Lock Up Now / menu)
-    scrollPageToTop();
-    requestAnimationFrame(() => scrollPageToTop());
+    // body is the scroller (WordPress-identical windows-scrollbar on body)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      });
+    }
   };
 
   const handleSafeClick = (safeNumber) => setModalSafe(safeNumber);
@@ -186,7 +181,7 @@ export default function BankApp() {
   const handleCloseModal = () => setModalSafe(null);
 
   return (
-    <div id="page-scroll" className="windows-scrollbar">
+    <>
       <Header
         activeSection={activeSection}
         onNavigate={handleNavigate}
@@ -243,6 +238,6 @@ export default function BankApp() {
       />
 
       <Footer />
-    </div>
+    </>
   );
 }
