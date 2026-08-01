@@ -374,7 +374,7 @@ export function WalletProvider({ children, onConnected }) {
       const ethereum = findVoodooSync() || (await discoverVoodooEip6963(1500));
       if (!ethereum) {
         setError?.(
-          'Voodoo Wallet not detected. Install the extension, unlock it, refresh, then try again.',
+          'Voodoo Wallet was not detected. Install the extension, open it and sign in, then refresh this page and try again.',
         );
         return false;
       }

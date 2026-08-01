@@ -105,13 +105,17 @@ export function normalizeNotify(message, variant = 'error') {
 
   let type = variant === 'success' ? 'success' : variant === 'info' ? 'info' : 'error';
   let title = type === 'success' ? 'Success' : type === 'info' ? 'Info' : 'Notice';
+  let message = raw;
 
   if (type === 'success' || /lock successful|locked \d|unlocked successfully/i.test(raw)) {
     title = 'Success';
     type = 'success';
-  } else if (/not detected|not ready|install/i.test(raw)) {
-    title = 'Wallet';
-    type = 'warning';
+  } else if (/not detected|not ready/i.test(raw)) {
+    // Same popup as Plinko/Miner
+    title = 'Voodoo Wallet';
+    type = 'error';
+    message =
+      'Voodoo Wallet was not detected. Install the extension, open it and sign in, then refresh this page and try again.';
   } else if (/failed|error|could not/i.test(raw) && type !== 'success') {
     title = 'Something went wrong';
     type = 'error';
@@ -119,7 +123,7 @@ export function normalizeNotify(message, variant = 'error') {
 
   return {
     title,
-    message: raw,
+    message,
     type,
     okText: 'OK',
   };
