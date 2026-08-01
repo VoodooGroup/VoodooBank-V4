@@ -1,13 +1,39 @@
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
   background-color: #0a2a3a;
   color: white;
   margin: 0;
   padding: 0;
+  height: 100%;
+  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+
+/* Page scroll shell — custom Windows scrollbar (same as StakingPlatform-V4) */
+#page-scroll {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  min-height: 100%;
+  scrollbar-width: auto;
+  scrollbar-color: silver #c0c0c0;
+}
+
+body.voodoo-ui-open #page-scroll {
+  overflow: hidden;
 }
 
 header,
@@ -703,4 +729,133 @@ body.voodoo-ui-open {
   font-weight: 700 !important;
   color: #111 !important;
   background: #e5e7eb !important;
+}
+
+/* ============================================================================
+   Custom Windows-style scrollbar (Chrome & Safari)
+   Same as StakingPlatform-V4 / Voodoo WordPress plugin
+   ============================================================================ */
+#page-scroll::-webkit-scrollbar,
+.windows-scrollbar::-webkit-scrollbar {
+  width: 14px !important;
+  height: 14px !important;
+  background-color: #c0c0c0 !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:end:increment,
+#page-scroll::-webkit-scrollbar-button:start:decrement,
+.windows-scrollbar::-webkit-scrollbar-button:end:increment,
+.windows-scrollbar::-webkit-scrollbar-button:start:decrement {
+  display: block !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:vertical:end:decrement,
+#page-scroll::-webkit-scrollbar-button:vertical:start:increment,
+.windows-scrollbar::-webkit-scrollbar-button:vertical:end:decrement,
+.windows-scrollbar::-webkit-scrollbar-button:vertical:start:increment {
+  display: none !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:vertical:increment,
+.windows-scrollbar::-webkit-scrollbar-button:vertical:increment {
+  width: 18px !important;
+  height: 18px !important;
+  background: silver url(https://voodootoken.com/hovihev/uploads/2025/04/up.png) no-repeat 50% !important;
+  margin: 1px !important;
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+  display: block !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:vertical:decrement,
+.windows-scrollbar::-webkit-scrollbar-button:vertical:decrement {
+  width: 18px !important;
+  height: 16px !important;
+  background: silver url(https://voodootoken.com/hovihev/uploads/2025/04/down.png) no-repeat 50% !important;
+  margin: 1px !important;
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+  display: block !important;
+}
+
+#page-scroll::-webkit-scrollbar-track,
+.windows-scrollbar::-webkit-scrollbar-track {
+  background-image: url(https://voodootoken.com/hovihev/uploads/2025/04/pixel-achtergrond.png) !important;
+  background-repeat: repeat !important;
+  background-color: #c0c0c0 !important;
+}
+
+#page-scroll::-webkit-scrollbar-thumb,
+#page-scroll::-webkit-scrollbar-thumb:vertical,
+.windows-scrollbar::-webkit-scrollbar-thumb,
+.windows-scrollbar::-webkit-scrollbar-thumb:vertical {
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+  min-height: 40px !important;
+  background-color: silver !important;
+  background-clip: padding-box !important;
+}
+
+#page-scroll::-webkit-scrollbar-corner,
+.windows-scrollbar::-webkit-scrollbar-corner {
+  background-color: #c0c0c0 !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:horizontal:end:decrement,
+#page-scroll::-webkit-scrollbar-button:horizontal:start:increment,
+.windows-scrollbar::-webkit-scrollbar-button:horizontal:end:decrement,
+.windows-scrollbar::-webkit-scrollbar-button:horizontal:start:increment {
+  display: none !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:horizontal:increment,
+.windows-scrollbar::-webkit-scrollbar-button:horizontal:increment {
+  width: 18px !important;
+  height: 18px !important;
+  background: silver url(https://voodootoken.com/hovihev/uploads/2025/04/comboright.png) no-repeat 50% !important;
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+  display: block !important;
+}
+
+#page-scroll::-webkit-scrollbar-button:horizontal:decrement,
+.windows-scrollbar::-webkit-scrollbar-button:horizontal:decrement {
+  width: 18px !important;
+  height: 18px !important;
+  background: silver url(https://voodootoken.com/hovihev/uploads/2025/04/comboleft.png) no-repeat 50% !important;
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+  display: block !important;
+}
+
+#page-scroll::-webkit-scrollbar-track-piece,
+.windows-scrollbar::-webkit-scrollbar-track-piece {
+  margin: 1px !important;
+}
+
+#page-scroll::-webkit-scrollbar-thumb:horizontal,
+.windows-scrollbar::-webkit-scrollbar-thumb:horizontal {
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+  background-color: silver !important;
+}
+
+/* Nested scroll panels (safe modal etc.) */
+.modal.windows-scrollbar,
+.modal {
+  scrollbar-width: auto;
+  scrollbar-color: silver #c0c0c0;
+}
+.modal::-webkit-scrollbar {
+  width: 14px !important;
+  background-color: #c0c0c0 !important;
+}
+.modal::-webkit-scrollbar-thumb {
+  background-color: silver !important;
+  border: 1px outset #fff !important;
+  box-shadow: 1px 1px #000 !important;
+}
+.modal::-webkit-scrollbar-track {
+  background-image: url(https://voodootoken.com/hovihev/uploads/2025/04/pixel-achtergrond.png) !important;
+  background-color: #c0c0c0 !important;
 }

@@ -164,16 +164,21 @@ export default function BankApp() {
     if (connected) await updateAll();
   };
 
+  const scrollPageToTop = () => {
+    if (typeof document === 'undefined') return;
+    const scroller = document.getElementById('page-scroll');
+    if (scroller) {
+      scroller.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  };
+
   const handleNavigate = (sectionId) => {
     setActiveSection(sectionId);
     // Always start at the top of the new section (Lock Up Now / menu)
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      // Next frame in case layout shifts after section switch
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-      });
-    }
+    scrollPageToTop();
+    requestAnimationFrame(() => scrollPageToTop());
   };
 
   const handleSafeClick = (safeNumber) => setModalSafe(safeNumber);
@@ -181,7 +186,7 @@ export default function BankApp() {
   const handleCloseModal = () => setModalSafe(null);
 
   return (
-    <>
+    <div id="page-scroll" className="windows-scrollbar">
       <Header
         activeSection={activeSection}
         onNavigate={handleNavigate}
@@ -238,6 +243,6 @@ export default function BankApp() {
       />
 
       <Footer />
-    </>
+    </div>
   );
 }
