@@ -373,6 +373,8 @@ export function WalletProvider({ children, onConnected }) {
     try {
       const ethereum = findVoodooSync() || (await discoverVoodooEip6963(1500));
       if (!ethereum) {
+        // Always route through setError → normalizeNotify → white UiModal
+        // (same 1:1 popup as Plinko / Miner / Governance — never banner / never install URL)
         setError?.(
           'Voodoo Wallet was not detected. Install the extension, open it and sign in, then refresh this page and try again.',
         );

@@ -51,8 +51,8 @@ export default function BankApp() {
   const closeUiDialog = useCallback(() => setUiDialog(null), []);
 
   /**
-   * Notify user with a white centered popup (staking-style).
-   * User-cancel messages are silent (no toast, no green banner).
+   * Notify user with white centered UiModal only (1:1 Plinko / Miner / Governance).
+   * User-cancel messages are silent. Never uses ErrorLog / yellow banners.
    */
   const setError = useCallback((message, variant = 'error') => {
     if (!message) {
@@ -61,11 +61,17 @@ export default function BankApp() {
     }
     const normalized = normalizeNotify(message, variant);
     if (!normalized) {
-      // Quiet cancel / empty
+      // Quiet cancel / empty — no popup, no banner
       console.info('[VoodooBank]', message);
       return;
     }
-    setUiDialog(normalized);
+    // Force modal (never fall back to green/yellow page banners)
+    setUiDialog({
+      title: normalized.title,
+      message: normalized.message,
+      type: normalized.type || 'error',
+      okText: normalized.okText || 'OK',
+    });
   }, []);
 
   const safeMap = useMemo(() => {

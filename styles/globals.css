@@ -573,7 +573,7 @@ footer,
   cursor: pointer;
   font-weight: bold;
 }
-/* ui.js modals — identical on Plinko + Miner (no page font bleed) */
+/* ui.js / UiModal — 1:1 Plinko + Miner + Voodoo Governance (no page font bleed) */
 body.voodoo-ui-open {
   overflow: hidden;
 }
@@ -586,12 +586,12 @@ body.voodoo-ui-open {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  /* Self-contained type — ignore body / page h2 rules */
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 1.5;
-  color: #111;
+  /* Self-contained type — ignore body { color: white } and page h2 rules */
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.5 !important;
+  color: #111 !important;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -607,38 +607,44 @@ body.voodoo-ui-open {
 
 .voodoo-ui-panel {
   position: relative;
-  background: #fff;
-  color: #111;
+  background: #fff !important;
+  color: #111 !important;
   border-radius: 12px;
   padding: 1.5rem;
   max-width: 420px;
   width: 100%;
   text-align: center;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  box-shadow: none;
+  border: none;
 }
 
 .voodoo-ui-title {
-  margin: 0 0 0.5rem;
-  padding: 0;
-  font-family: inherit;
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.3;
-  color: #111;
-  letter-spacing: normal;
+  display: block;
+  margin: 0 0 0.5rem !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  color: #111 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
 }
 
 .voodoo-ui-message {
-  margin: 0 0 1rem;
-  padding: 0;
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.5;
-  color: #374151;
+  display: block;
+  margin: 0 0 1rem !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: 0.95rem !important;
+  font-weight: 400 !important;
+  line-height: 1.5 !important;
+  color: #374151 !important;
   white-space: pre-wrap;
+  text-align: center;
 }
 
 .voodoo-ui-actions {
@@ -649,33 +655,42 @@ body.voodoo-ui-open {
 }
 
 .voodoo-ui-btn {
-  border: none;
-  border-radius: 8px;
-  padding: 0.55rem 1rem;
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 600;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 1rem !important;
+  font-family: inherit !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
   cursor: pointer;
+  line-height: 1.25 !important;
+  min-width: auto;
+  height: auto;
 }
 
 .voodoo-ui-btn-primary {
-  background: #1e40af;
-  color: #fff;
+  background: #1e40af !important;
+  color: #fff !important;
 }
 
 .voodoo-ui-btn-secondary {
-  background: #e5e7eb;
-  color: #111;
+  background: #e5e7eb !important;
+  color: #111 !important;
   text-decoration: none;
   display: inline-flex;
 }
 
 .voodoo-ui-btn-ghost {
-  background: transparent;
-  color: #4b5563;
+  background: transparent !important;
+  color: #4b5563 !important;
 }
 
-.voodoo-ui-icon {
+/* Gray circle only — never yellow/red/green (matches Plinko/Miner) */
+.voodoo-ui-icon,
+.voodoo-ui-icon[data-type],
+.voodoo-ui-icon[data-type="error"],
+.voodoo-ui-icon[data-type="warning"],
+.voodoo-ui-icon[data-type="success"],
+.voodoo-ui-icon[data-type="info"] {
   width: 48px;
   height: 48px;
   margin: 0 auto 0.75rem;
@@ -683,9 +698,9 @@ body.voodoo-ui-open {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: inherit;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111;
-  background: #e5e7eb;
+  font-family: inherit !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #111 !important;
+  background: #e5e7eb !important;
 }
